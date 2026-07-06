@@ -30,7 +30,39 @@ Install Xcode Command Line Tools if needed:
 xcode-select --install
 ```
 
+## Easiest Install With Homebrew
+
+Install the generic app:
+
+```sh
+brew tap ddingddong9/tap
+brew install --cask menupet
+open -a MenuPet
+```
+
+Then click the heart icon in the macOS menu bar and choose:
+
+```text
+펫 이미지 선택...
+```
+
+Pick your PNG image. MenuPet stores that image locally in your user Library folder, not in this repository.
+
+Optional:
+
+```text
+말풍선 이미지 선택...
+```
+
+Uninstall:
+
+```sh
+brew uninstall --cask menupet
+```
+
 ## Quick Start
+
+Use this if you want to build from source instead of installing the cask.
 
 ```sh
 git clone https://github.com/ddingddong9/MenuPet.git MenuPet
@@ -193,6 +225,12 @@ Ignored local files:
 - `.env.local`
 - `private-assets/`
 - `.build/`
+
+When installed with Homebrew, selected images are copied into:
+
+```sh
+~/Library/Application Support/dev.example.menupet/
+```
 
 Before publishing or pushing changes, run:
 

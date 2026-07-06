@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-if [[ -f "$ROOT_DIR/.env.local" ]]; then
+if [[ "${SKIP_ENV_LOCAL:-0}" != "1" && -f "$ROOT_DIR/.env.local" ]]; then
   set -a
   # shellcheck source=/dev/null
   source "$ROOT_DIR/.env.local"
@@ -27,9 +27,7 @@ ICONSET_DIR="$BUILD_DIR/AppIcon.iconset"
 
 if [[ ! -f "$PET_IMAGE_PATH" ]]; then
   echo "Pet image not found: $PET_IMAGE_PATH" >&2
-  echo "Put a private PNG at private-assets/pet-character.png or run:" >&2
-  echo "  PET_IMAGE_PATH=/path/to/pet.png ./scripts/build-app.sh" >&2
-  exit 1
+  echo "Building a generic app. Users can choose a PNG from the menu after launch." >&2
 fi
 
 rm -rf "$APP_PATH"
@@ -42,7 +40,9 @@ swiftc \
   -o "$APP_PATH/Contents/MacOS/$EXECUTABLE_NAME"
 
 cp "$ROOT_DIR/Info.plist" "$APP_PATH/Contents/Info.plist"
-cp -p "$PET_IMAGE_PATH" "$APP_PATH/Contents/Resources/$RESOURCE_NAME"
+if [[ -f "$PET_IMAGE_PATH" ]]; then
+  cp -p "$PET_IMAGE_PATH" "$APP_PATH/Contents/Resources/$RESOURCE_NAME"
+fi
 if [[ -f "$SPEECH_IMAGE_PATH" ]]; then
   cp -p "$SPEECH_IMAGE_PATH" "$APP_PATH/Contents/Resources/$BUBBLE_MESSAGE_NAME"
 fi
@@ -57,14 +57,16 @@ fi
 iconutil -c icns "$ICONSET_DIR" -o "$APP_PATH/Contents/Resources/AppIcon.icns"
 plutil -lint "$APP_PATH/Contents/Info.plist" >/dev/null
 
-original_hash="$(shasum -a 256 "$PET_IMAGE_PATH" | awk '{print $1}')"
-bundle_hash="$(shasum -a 256 "$APP_PATH/Contents/Resources/$RESOURCE_NAME" | awk '{print $1}')"
+if [[ -f "$PET_IMAGE_PATH" ]]; then
+  original_hash="$(shasum -a 256 "$PET_IMAGE_PATH" | awk '{print $1}')"
+  bundle_hash="$(shasum -a 256 "$APP_PATH/Contents/Resources/$RESOURCE_NAME" | awk '{print $1}')"
 
-if [[ "$original_hash" != "$bundle_hash" ]]; then
-  echo "PNG SHA-256 mismatch" >&2
-  echo "Original: $original_hash" >&2
-  echo "Bundle:   $bundle_hash" >&2
-  exit 1
+  if [[ "$original_hash" != "$bundle_hash" ]]; then
+    echo "PNG SHA-256 mismatch" >&2
+    echo "Original: $original_hash" >&2
+    echo "Bundle:   $bundle_hash" >&2
+    exit 1
+  fi
 fi
 
 if command -v codesign >/dev/null 2>&1; then
@@ -76,4 +78,8 @@ ditto "$APP_PATH" "$DESKTOP_APP"
 
 echo "Built: $APP_PATH"
 echo "Installed: $DESKTOP_APP"
-echo "Pet PNG SHA-256: $bundle_hash"
+if [[ -f "$PET_IMAGE_PATH" ]]; then
+  echo "Pet PNG SHA-256: $bundle_hash"
+else
+  echo "Pet PNG SHA-256: not bundled"
+fi

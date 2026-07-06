@@ -1,5 +1,6 @@
 import Cocoa
 import QuartzCore
+import UniformTypeIdentifiers
 
 private let imageResourceName = "pet-character"
 private var appDisplayName: String {
@@ -314,6 +315,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let scaleLabel = NSTextField(labelWithString: "")
     private let scaleSlider = NSSlider(value: defaultScalePercent, minValue: 0.0, maxValue: 100.0, target: nil, action: nil)
+    private let fileManager = FileManager.default
 
     private var scalePercent: Double
     private var motionMode: MotionMode
@@ -380,6 +382,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
+
+        let choosePetItem = NSMenuItem(title: "펫 이미지 선택...", action: #selector(choosePetImage), keyEquivalent: "")
+        choosePetItem.target = self
+        menu.addItem(choosePetItem)
+
+        let chooseSpeechItem = NSMenuItem(title: "말풍선 이미지 선택...", action: #selector(chooseSpeechImage), keyEquivalent: "")
+        chooseSpeechItem.target = self
+        menu.addItem(chooseSpeechItem)
+
+        menu.addItem(.separator())
 
         let showItem = NSMenuItem(title: "\(appDisplayName) 보이기", action: #selector(showPetFromMenu), keyEquivalent: "")
         showItem.target = self
@@ -469,7 +481,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return petPanel
         }
 
-        guard let image = NSImage(named: NSImage.Name(imageResourceName)) else {
+        guard let image = loadPetImage() else {
             NSLog("\(appDisplayName) 이미지 리소스를 찾을 수 없습니다: \(imageResourceName)")
             return nil
         }
@@ -498,13 +510,90 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let panel = SpeechBubblePanel(contentRect: NSRect(origin: .zero, size: speechBubbleSize))
         let bubbleView = SpeechBubbleView(frame: NSRect(origin: .zero, size: speechBubbleSize))
         bubbleView.message = speechBubbleText
-        bubbleView.messageImage = NSImage(named: NSImage.Name(speechBubbleImageResourceName))
+        bubbleView.messageImage = loadSpeechBubbleImage()
         bubbleView.autoresizingMask = [.width, .height]
         panel.contentView = bubbleView
 
         speechBubblePanel = panel
         speechBubbleView = bubbleView
         return panel
+    }
+
+    private var appSupportDirectoryURL: URL {
+        let baseURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        let identifier = Bundle.main.bundleIdentifier ?? "dev.example.menupet"
+        return baseURL.appendingPathComponent(identifier, isDirectory: true)
+    }
+
+    private var userPetImageURL: URL {
+        appSupportDirectoryURL.appendingPathComponent("pet-character.png")
+    }
+
+    private var userSpeechBubbleImageURL: URL {
+        appSupportDirectoryURL.appendingPathComponent("speech-message.png")
+    }
+
+    private func loadPetImage() -> NSImage? {
+        if let image = NSImage(contentsOf: userPetImageURL) {
+            return image
+        }
+
+        if let bundledURL = Bundle.main.url(forResource: imageResourceName, withExtension: "png"),
+           let image = NSImage(contentsOf: bundledURL) {
+            return image
+        }
+
+        return nil
+    }
+
+    private func loadSpeechBubbleImage() -> NSImage? {
+        if let image = NSImage(contentsOf: userSpeechBubbleImageURL) {
+            return image
+        }
+
+        if let bundledURL = Bundle.main.url(forResource: speechBubbleImageResourceName, withExtension: "png") {
+            return NSImage(contentsOf: bundledURL)
+        }
+
+        return nil
+    }
+
+    private func copyPNG(from sourceURL: URL, to destinationURL: URL) throws {
+        try fileManager.createDirectory(at: destinationURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if fileManager.fileExists(atPath: destinationURL.path) {
+            try fileManager.removeItem(at: destinationURL)
+        }
+        try fileManager.copyItem(at: sourceURL, to: destinationURL)
+    }
+
+    private func resetPetPanelForNewImage() {
+        stopMotion()
+        hideSpeechBubble()
+        petPanel?.orderOut(nil)
+        petPanel = nil
+        imageView = nil
+    }
+
+    private func resetSpeechBubbleForNewImage() {
+        speechBubblePanel?.orderOut(nil)
+        speechBubblePanel = nil
+        speechBubbleView = nil
+        speechBubbleUntil = nil
+    }
+
+    private func runPNGOpenPanel(title: String) -> URL? {
+        NSApp.activate(ignoringOtherApps: true)
+
+        let panel = NSOpenPanel()
+        panel.title = title
+        panel.allowedContentTypes = [.png]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.resolvesAliases = true
+
+        return panel.runModal() == .OK ? panel.url : nil
     }
 
     private func targetFrame(for image: NSImage) -> NSRect {
@@ -795,6 +884,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func sliderChanged(_ sender: NSSlider) {
         setScalePercent(sender.doubleValue)
+    }
+
+    @objc private func choosePetImage() {
+        guard let sourceURL = runPNGOpenPanel(title: "펫 이미지 선택") else {
+            return
+        }
+
+        do {
+            try copyPNG(from: sourceURL, to: userPetImageURL)
+            resetPetPanelForNewImage()
+            if scalePercent <= 0 {
+                setScalePercent(defaultScalePercent)
+            } else {
+                showPet(animateFromBottom: true)
+            }
+        } catch {
+            NSLog("펫 이미지를 저장할 수 없습니다: \(error.localizedDescription)")
+        }
+    }
+
+    @objc private func chooseSpeechImage() {
+        guard let sourceURL = runPNGOpenPanel(title: "말풍선 이미지 선택") else {
+            return
+        }
+
+        do {
+            try copyPNG(from: sourceURL, to: userSpeechBubbleImageURL)
+            resetSpeechBubbleForNewImage()
+        } catch {
+            NSLog("말풍선 이미지를 저장할 수 없습니다: \(error.localizedDescription)")
+        }
     }
 
     @objc private func motionModeChanged(_ sender: NSMenuItem) {
