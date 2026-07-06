@@ -36,6 +36,7 @@ Install the generic app:
 
 ```sh
 brew tap ddingddong9/tap
+brew trust ddingddong9/tap
 brew install --cask menupet
 open -a MenuPet
 ```
