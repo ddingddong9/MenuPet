@@ -1,12 +1,14 @@
 # MenuPet
 
-MenuPet is a native macOS menu bar desktop-pet template built with Swift and AppKit.
+MenuPet is a desktop-pet template for macOS and Windows.
 
 It lets anyone turn their own transparent PNG into a small desktop companion that wanders around the screen, bounces, rests, jumps, dashes, and occasionally shows a speech bubble.
 
 No personal images are included in this repository.
 
 ## Features
+
+### macOS
 
 - Native Swift + AppKit macOS app
 - `LSUIElement` menu bar app, so no Dock icon is required
@@ -18,7 +20,22 @@ No personal images are included in this repository.
 - Optional speech bubble image
 - Local-only private assets through `.env.local` and `private-assets/`
 
+### Windows
+
+- Native .NET 8 WPF app
+- Windows system tray icon
+- Transparent always-on-top pet window
+- Show, hide, scale, movement-speed controls
+- Editable speech bubble text
+- Draggable chicken breast food
+- Eating animation with hearts and `냠냠`
+- Manual and random bench press animation
+- Cursor throw when the mouse enters the pet
+- Private assets stored in `%APPDATA%\MenuPet`
+
 ## Requirements
+
+### macOS
 
 - macOS 12 or newer
 - Xcode Command Line Tools
@@ -29,6 +46,13 @@ Install Xcode Command Line Tools if needed:
 ```sh
 xcode-select --install
 ```
+
+### Windows
+
+- Windows 10 or Windows 11
+- Git for Windows
+- .NET 8 SDK
+- A PNG image for your desktop pet
 
 ## Easiest Install With Homebrew
 
@@ -61,7 +85,43 @@ Uninstall:
 brew uninstall --cask menupet
 ```
 
-## Quick Start
+## Windows Install
+
+Run PowerShell:
+
+```powershell
+iwr -UseBasicParsing https://raw.githubusercontent.com/ddingddong9/MenuPet/main/scripts/install-windows.ps1 -OutFile "$env:TEMP\install-menupet.ps1"
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-menupet.ps1" -PetPath "C:\path\to\pet.png"
+```
+
+Example with a custom app name:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-menupet.ps1" `
+  -PetPath "C:\path\to\pet.png" `
+  -Name "Desk Buddy" `
+  -SpeechText "hello!"
+```
+
+The Windows app is published to:
+
+```text
+%USERPROFILE%\Desktop\MenuPet.Windows
+```
+
+Run it:
+
+```powershell
+& "$env:USERPROFILE\Desktop\MenuPet.Windows\MenuPet.Windows.exe"
+```
+
+Stop it:
+
+```powershell
+Stop-Process -Name MenuPet.Windows
+```
+
+## macOS Quick Start
 
 Use this if you want to build from source instead of installing the cask.
 
@@ -90,7 +150,7 @@ Stop it:
 pkill -x MenuPet
 ```
 
-## One-Line Install
+## macOS One-Line Install
 
 After publishing, users can install directly from Terminal with:
 
@@ -226,11 +286,19 @@ Ignored local files:
 - `.env.local`
 - `private-assets/`
 - `.build/`
+- `**/bin/`
+- `**/obj/`
 
 When installed with Homebrew, selected images are copied into:
 
 ```sh
 ~/Library/Application Support/dev.example.menupet/
+```
+
+On Windows, selected images are copied into:
+
+```text
+%APPDATA%\MenuPet
 ```
 
 Before publishing or pushing changes, run:

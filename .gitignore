@@ -2,3 +2,9 @@
 .DS_Store
 .env.local
 private-assets/
+**/bin/
+**/obj/
+**/publish/
+**/private-assets/
+*.user
+*.suo
